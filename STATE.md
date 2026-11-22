@@ -55,7 +55,7 @@
 ## Alamat / hash
 - Studio deploy versi lama (pra-refactor, 20:15 WIB 22 Nov 2026): 0x50e280BdFbD66E30f28eD8bB793b9bb28AF805C5, deploy tx 0x9e2740b9e57684ad880dac964fda65706fe5561f1b623464bbb9f54b446598a0. submit_report FINALIZED (tx 0x48cf373c04e69fdcdb7caf666d5ba6ac6c9e60b31daaab0986123588b13ac607), triage GAGAL konsensus (UNDETERMINED, validator beda di luar toleransi 1). Versi ini DIGANTI refactor di atas; deploy versi baru menunggu browser task.
 - Repo GitHub: https://github.com/Yogii123-qw/genlayer-triagedesk
-- Commit: 6a23e13 (master, terverifikasi di remote)
+- Commit: b85531c (master, terverifikasi di remote)
 
 ## Perapian 22 Nov 2026
 - .gitignore baru dibuat: __pycache__/, .pytest_cache/, artifacts/, *.pyc, *.log, logs/, .genlayer/, .env*.
