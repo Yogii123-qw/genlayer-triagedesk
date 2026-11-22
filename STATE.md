@@ -1,7 +1,7 @@
 # STATE.md - TriageDesk (GenLayer Projects)
 
 ## Status saat ini
-- Fase: kode selesai, uji lokal LULUS 12/12, lint LULUS (3 checks), audit teks 0 pelanggaran, screenshot 6/6 bersih, review akhir Groq selesai. Repo dibuat dan di-push. Studio deploy BELUM dilakukan (butuh browser task induk).
+- Fase: kode ditulis ulang ke gaya lama 22 Nov 2026 (header # v0.2.16, pin 1jb45aa8, gl.Contract, TreeMap telanjang) sesudah Studio menolak pin v0.4.0; uji lokal LULUS 12/12 atas file kirim yang byte-identik, tanpa swap. Repo dibuat dan di-push. Studio deploy BELUM dilakukan (butuh browser task induk).
 - JANGAN SUBMIT ke portal GenLayer tanpa persetujuan Monch.
 
 ## SOP dan skill yang dibaca utuh sebelum kerja
@@ -23,7 +23,7 @@
 
 ## Uji lokal (genlayer-test Direct Mode, 22 Nov 2026)
 - 12/12 LULUS dalam 0,60 detik. Cakupan: submit dan get_report awal (status submitted, skor nol, list_top kosong), alur penuh submit-triage-list_top-get_report (skor 8/7/6/9, total 30) plus triage kedua tanpa challenge revert, challenge sekali lalu triage ulang dengan skor baru (total 38) lalu challenge kedua revert, triage dan get_report pada id yang tidak ada revert, challenge oleh bukan pengirim revert, challenge sebelum triage revert, skor 11 revert dan laporan tetap untriaged dan unlisted, output model bukan JSON revert, validator menerima selisih 1 poin, validator menolak selisih 2 poin, judul kosong dan deskripsi 2001 karakter dan steps kosong dan impact claim kosong revert, list_top mengurutkan 38/30/14 dengan limit 2 dan limit 0/21 revert.
-- Batasan uji: kontrak diuji sebagai salinan yang byte-identik kecuali header (pin SDK 1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6, satu-satunya runner di bundle GenVM v0.3.0-rc7) dan dua penyesuaian API era lama (from genlayer import * sebagai ganti from genlayer.types import *, gl.Contract sebagai ganti gl.contract.Contract). Kontrak kirim tetap memakai header v0.4.0 dan pin kzybg95x1gn21dw72m7hyg0maaap04n4nx55j9yt6fkdqxtz6bz0. Bukti deploy Studio tetap menjadi cek otoritatif untuk pin kirim.
+- Batasan uji: kontrak diuji sebagai file kirim yang byte-identik (header # v0.2.16, pin SDK 1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6, satu-satunya runner di bundle GenVM v0.3.0-rc7), tanpa swap header dan tanpa penyesuaian API. Pin ini terbukti bisa di-deploy di Studio pada 22 Nov 2026 (kontrak minimal gaya lama, alamat 0x05534FE75D83950cFE6C5d54486d20366576Ac1D). Bukti deploy Studio atas kontrak ini tetap menjadi cek otoritatif.
 - Batasan uji tambahan: tes memakai respons model mock, bukan model live. Kualitas skor di Studio bergantung pada model yang dipakai Studio.
 
 ## Lint

@@ -1,13 +1,6 @@
 """Local Direct Mode tests for TriageDesk.
 
-NOTE ON THE SDK PIN: the shipped contract (contracts/triage.py) targets
-Studio-next (v0.4.0 header, py-genlayer pin
-kzybg95x1gn21dw72m7hyg0maaap04n4nx55j9yt6fkdqxtz6bz0). That pin is not
-inside any public GenVM release bundle, so local tests run a copy with ONLY
-the header swapped to the locally available pin
-(1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6), plus the era
-replacements below for names that moved between SDK versions. The Studio
-deploy remains the authoritative check for the shipped pin.
+NOTE ON THE SDK PIN: the shipped contract (contracts/triage.py) targets the old-style pin directly (# v0.2.16 header, py-genlayer pin 1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6), the same pin the Studio build of 22 Nov 2026 proved deployable. Local tests deploy the shipped file verbatim, with no header swap and no API replacements, so the file tested here is byte-identical to the file Studio receives. The Studio deploy remains the authoritative check.
 
 Language model calls are mocked with direct_vm.mock_llm. The custom
 validator is exercised through direct_vm.run_validator, which re-runs the
@@ -18,10 +11,9 @@ _parse_triage is exercised on both dict input (mocked) and string input
 (garbage responses that fail JSON parsing stay strings).
 """
 
-import re
 from pathlib import Path
 
-V030_PIN = "1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"
+SHIPPED_PIN = "1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"
 
 SCORES_A = (
     '{"impact": 8, "impact_reason": "Loss of user funds is severe.", '
@@ -73,28 +65,16 @@ IMPACT = "An attacker can drain the vault balance."
 
 
 def _local_copy(tmp_path):
+    # The shipped contract already targets the old-style pin, so tests
+    # deploy it verbatim: no header swap, no API replacements. If the
+    # header ever drifts back to a newer pin, this guard fails loudly
+    # instead of silently testing a different file than Studio receives.
     src = Path("contracts/triage.py").read_text()
-    src = re.sub(r"# v[0-9.]+", "# v0.1.0", src, count=1)
-    src = re.sub(
-        r'"Depends": "py-genlayer:[^"]+"',
-        '"Depends": "py-genlayer:%s"' % V030_PIN,
-        src,
-        count=1,
-    )
-    # The 1jb45-era SDK has no genlayer.types module and no gl.contract
-    # submodule. Names live at top scope of genlayer itself, and the base
-    # class is gl.Contract. Swap both for local testing only.
-    src = src.replace("from genlayer.types import *", "from genlayer import *", 1)
-    src = src.replace("gl.contract.Contract", "gl.Contract", 1)
-    # The 1jb45-era SDK exports TreeMap at top scope, while the shipped pin
-    # only provides it as gl.storage.TreeMap (verified in Studio: bare
-    # TreeMap raises NameError at schema load). Map it back for local runs.
-    src = src.replace("gl.storage.TreeMap", "TreeMap")
+    assert src.startswith("# v0.2.16\n"), "shipped header drifted from v0.2.16"
+    assert SHIPPED_PIN in src, "shipped header drifted from pin 1jb45aa8"
     target = tmp_path / "triage_local.py"
     target.write_text(src)
     return str(target)
-
-
 def _deploy(direct_vm, direct_deploy, tmp_path):
     return direct_deploy(_local_copy(tmp_path))
 

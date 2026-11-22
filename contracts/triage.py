@@ -1,11 +1,10 @@
-# v0.4.0
-# { "Depends": "py-genlayer:kzybg95x1gn21dw72m7hyg0maaap04n4nx55j9yt6fkdqxtz6bz0" }
+# v0.2.16
+# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+
+from genlayer import *
 
 import json
 import typing
-
-import genlayer as gl
-from genlayer.types import *
 
 
 MAX_TITLE_LEN = 100
@@ -157,25 +156,25 @@ def _handle_leader_error(leaders_res, leader_fn) -> bool:
         return False
 
 
-class TriageDesk(gl.contract.Contract):
+class TriageDesk(gl.Contract):
     report_count: u256
-    report_title: gl.storage.TreeMap[u256, str]
-    report_description: gl.storage.TreeMap[u256, str]
-    report_steps: gl.storage.TreeMap[u256, str]
-    report_impact_claim: gl.storage.TreeMap[u256, str]
-    report_reporter: gl.storage.TreeMap[u256, str]
-    report_status: gl.storage.TreeMap[u256, u256]
-    report_challenged: gl.storage.TreeMap[u256, bool]
-    report_challenge_reason: gl.storage.TreeMap[u256, str]
-    score_impact: gl.storage.TreeMap[u256, u256]
-    score_exploitability: gl.storage.TreeMap[u256, u256]
-    score_evidence: gl.storage.TreeMap[u256, u256]
-    score_reproducibility: gl.storage.TreeMap[u256, u256]
-    reason_impact: gl.storage.TreeMap[u256, str]
-    reason_exploitability: gl.storage.TreeMap[u256, str]
-    reason_evidence: gl.storage.TreeMap[u256, str]
-    reason_reproducibility: gl.storage.TreeMap[u256, str]
-    total_score: gl.storage.TreeMap[u256, u256]
+    report_title: TreeMap[u256, str]
+    report_description: TreeMap[u256, str]
+    report_steps: TreeMap[u256, str]
+    report_impact_claim: TreeMap[u256, str]
+    report_reporter: TreeMap[u256, str]
+    report_status: TreeMap[u256, u256]
+    report_challenged: TreeMap[u256, bool]
+    report_challenge_reason: TreeMap[u256, str]
+    score_impact: TreeMap[u256, u256]
+    score_exploitability: TreeMap[u256, u256]
+    score_evidence: TreeMap[u256, u256]
+    score_reproducibility: TreeMap[u256, u256]
+    reason_impact: TreeMap[u256, str]
+    reason_exploitability: TreeMap[u256, str]
+    reason_evidence: TreeMap[u256, str]
+    reason_reproducibility: TreeMap[u256, str]
+    total_score: TreeMap[u256, u256]
 
     def __init__(self):
         self.report_count = u256(0)

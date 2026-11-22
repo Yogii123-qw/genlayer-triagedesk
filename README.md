@@ -48,7 +48,7 @@ The tests use genlayer-test in Direct Mode with mocked model responses. Install 
 
 `pytest tests/test_triage.py -q`
 
-The test file swaps only the contract header to a locally available SDK pin. The shipped contract itself targets Studio-next, and that header stays untouched. `gl.vm.run_nondet_unsafe` and `gl.nondet.exec_prompt` are both present in the local bundle, so the custom validator path runs locally too: the leader runs through mocked model calls, and the captured validator is re-run with changed mocks to prove it accepts a score gap of 1 point and rejects a gap of 2 points.
+The shipped contract targets the old-style SDK pin directly, and local tests deploy that exact file with no header swap, so the tested file is byte-identical to the file Studio receives. `gl.vm.run_nondet_unsafe` and `gl.nondet.exec_prompt` are both present in the local bundle, so the custom validator path runs locally too: the leader runs through mocked model calls, and the captured validator is re-run with changed mocks to prove it accepts a score gap of 1 point and rejects a gap of 2 points.
 
 ## Verification & Test Results
 
