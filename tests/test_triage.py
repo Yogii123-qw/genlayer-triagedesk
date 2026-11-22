@@ -16,36 +16,29 @@ from pathlib import Path
 SHIPPED_PIN = "1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"
 
 SCORES_A = (
-    '{"impact": 8, "impact_reason": "Loss of user funds is severe.", '
-    '"exploitability": 7, "exploitability_reason": "A crafted call triggers it.", '
-    '"evidence": 6, "evidence_reason": "A log excerpt backs the claim.", '
-    '"reproducibility": 9, "reproducibility_reason": "Steps are exact and ordered."}'
+    '{"impact": 2, "impact_reason": "Loss of user funds is severe.", '
+    '"exploitability": 4, "exploitability_reason": "A crafted call triggers it.", '
+    '"evidence": 3, "evidence_reason": "A log excerpt backs the claim.", '
+    '"reproducibility": 5, "reproducibility_reason": "Steps are exact and ordered."}'
 )
-# Same as A except impact is 1 point higher: inside the tolerance of 1.
-SCORES_DIFF_ONE = (
-    '{"impact": 9, "impact_reason": "Loss of user funds is severe.", '
-    '"exploitability": 7, "exploitability_reason": "A crafted call triggers it.", '
-    '"evidence": 6, "evidence_reason": "A log excerpt backs the claim.", '
-    '"reproducibility": 9, "reproducibility_reason": "Steps are exact and ordered."}'
-)
-# Same as A except impact is 2 points higher: outside the tolerance of 1.
-SCORES_DIFF_TWO = (
-    '{"impact": 10, "impact_reason": "Loss of user funds is severe.", '
-    '"exploitability": 7, "exploitability_reason": "A crafted call triggers it.", '
-    '"evidence": 6, "evidence_reason": "A log excerpt backs the claim.", '
-    '"reproducibility": 9, "reproducibility_reason": "Steps are exact and ordered."}'
+# Same as A except impact is 3 points higher: outside the tolerance of 2.
+SCORES_DIFF_THREE = (
+    '{"impact": 5, "impact_reason": "Loss of user funds is severe.", '
+    '"exploitability": 4, "exploitability_reason": "A crafted call triggers it.", '
+    '"evidence": 3, "evidence_reason": "A log excerpt backs the claim.", '
+    '"reproducibility": 5, "reproducibility_reason": "Steps are exact and ordered."}'
 )
 SCORES_LOW = (
-    '{"impact": 3, "impact_reason": "Harm is limited to a display glitch.", '
+    '{"impact": 1, "impact_reason": "Harm is limited to a display glitch.", '
     '"exploitability": 2, "exploitability_reason": "Needs an admin key to trigger.", '
-    '"evidence": 4, "evidence_reason": "Only a screenshot is given.", '
-    '"reproducibility": 5, "reproducibility_reason": "Steps skip the setup."}'
+    '"evidence": 2, "evidence_reason": "Only a screenshot is given.", '
+    '"reproducibility": 3, "reproducibility_reason": "Steps skip the setup."}'
 )
 SCORES_HIGH = (
-    '{"impact": 10, "impact_reason": "All funds can be drained.", '
-    '"exploitability": 9, "exploitability_reason": "One public call is enough.", '
-    '"evidence": 9, "evidence_reason": "A full proof of concept is attached.", '
-    '"reproducibility": 10, "reproducibility_reason": "Steps are exact and ordered."}'
+    '{"impact": 5, "impact_reason": "All funds can be drained.", '
+    '"exploitability": 5, "exploitability_reason": "One public call is enough.", '
+    '"evidence": 5, "evidence_reason": "A full proof of concept is attached.", '
+    '"reproducibility": 5, "reproducibility_reason": "Steps are exact and ordered."}'
 )
 SCORES_BAD_RANGE = (
     '{"impact": 11, "impact_reason": "Too high.", '
@@ -105,19 +98,19 @@ def test_full_flow_submit_triage_list_top_get_report(
     _submit(contract)
     direct_vm.mock_llm(r"Reentrancy in vault", SCORES_A)
     result = contract.triage(0)
-    assert result["impact"] == 8
-    assert result["exploitability"] == 7
-    assert result["evidence"] == 6
-    assert result["reproducibility"] == 9
-    assert result["total_score"] == 30
+    assert result["impact"] == 2
+    assert result["exploitability"] == 4
+    assert result["evidence"] == 3
+    assert result["reproducibility"] == 5
+    assert result["total_score"] == 14
     assert result["status"] == 1
     assert "Loss of user funds" in result["impact_reason"]
     top = contract.list_top(10)
     assert len(top["reports"]) == 1
     assert top["reports"][0]["id"] == 0
-    assert top["reports"][0]["total_score"] == 30
+    assert top["reports"][0]["total_score"] == 14
     report = contract.get_report(0)
-    assert report["total_score"] == 30
+    assert report["total_score"] == 14
     # A second triage without a challenge must revert.
     with direct_vm.expect_revert("already triaged"):
         contract.triage(0)
@@ -138,7 +131,7 @@ def test_challenge_once_then_retriage_second_challenge_reverts(
     direct_vm.clear_mocks()
     direct_vm.mock_llm(r"Reentrancy in vault", SCORES_HIGH)
     result = contract.triage(0)
-    assert result["total_score"] == 38
+    assert result["total_score"] == 20
     assert result["challenged"] is True
     assert result["status"] == 1
     # A second challenge must revert: only one re-assessment is allowed.
@@ -192,26 +185,33 @@ def test_triage_garbage_model_output_reverts(direct_vm, direct_deploy, tmp_path)
         contract.triage(0)
 
 
-def test_validator_accepts_score_diff_one(direct_vm, direct_deploy, tmp_path):
+def test_validator_band_principle_states_two_points(tmp_path):
+    # The 2 point band lives in the comparative principle text, not in a
+    # numeric constant: the built-in EqComparative check reads the
+    # principle. Pin the wording so a careless edit cannot silently
+    # change the band the validators enforce live.
+    src = Path("contracts/triage.py").read_text()
+    assert "differ by at most 2 points" in src
+    for rubric in ("impact", "exploitability", "evidence", "reproducibility"):
+        assert rubric in src
+
+
+def test_direct_mode_validator_verdict_unobservable(
+    direct_vm, direct_deploy, tmp_path
+):
+    # Direct Mode has no handler for the EqComparative check, so
+    # run_validator() returns None for any score gap (probed 22 Nov 2026:
+    # a 2 point gap and a 3 point gap both returned None). The band is
+    # enforced live by GenVM, and the Studio deploy verification is the
+    # authoritative check. If a later harness starts returning booleans,
+    # this test fails on purpose: restore the accept/reject band tests.
     contract = _deploy(direct_vm, direct_deploy, tmp_path)
     _submit(contract)
     direct_vm.mock_llm(r"Reentrancy in vault", SCORES_A)
     contract.triage(0)
-    # Validator sees impact 9 instead of 8: a 1 point move, inside tolerance.
     direct_vm.clear_mocks()
-    direct_vm.mock_llm(r"Reentrancy in vault", SCORES_DIFF_ONE)
-    assert direct_vm.run_validator() is True
-
-
-def test_validator_rejects_score_diff_two(direct_vm, direct_deploy, tmp_path):
-    contract = _deploy(direct_vm, direct_deploy, tmp_path)
-    _submit(contract)
-    direct_vm.mock_llm(r"Reentrancy in vault", SCORES_A)
-    contract.triage(0)
-    # Validator sees impact 10 instead of 8: a 2 point move, outside tolerance.
-    direct_vm.clear_mocks()
-    direct_vm.mock_llm(r"Reentrancy in vault", SCORES_DIFF_TWO)
-    assert direct_vm.run_validator() is False
+    direct_vm.mock_llm(r"Reentrancy in vault", SCORES_DIFF_THREE)
+    assert direct_vm.run_validator() is None
 
 
 def test_submit_empty_and_too_long_reverts(direct_vm, direct_deploy, tmp_path):
@@ -241,7 +241,7 @@ def test_list_top_orders_by_total_and_respects_limit(
     contract.triage(2)
     top = contract.list_top(10)
     assert [r["id"] for r in top["reports"]] == [2, 0, 1]
-    assert [r["total_score"] for r in top["reports"]] == [38, 30, 14]
+    assert [r["total_score"] for r in top["reports"]] == [20, 14, 8]
     assert top["total_reports"] == 3
     top_two = contract.list_top(2)
     assert [r["id"] for r in top_two["reports"]] == [2, 0]

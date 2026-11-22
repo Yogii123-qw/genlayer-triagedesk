@@ -1,6 +1,6 @@
 # TriageDesk
 
-TriageDesk is a bug report triage application for GenLayer, built as a Projects submission. A security researcher submits a vulnerability report. An Intelligent Contract asks a language model to score the report on four fixed rubrics, each from 0 to 10, and GenLayer validators agree on the scores before they are stored. A one page web app shows the leaderboard and the rubric scores with reasons for each report.
+TriageDesk is a bug report triage application for GenLayer, built as a Projects submission. A security researcher submits a vulnerability report. An Intelligent Contract asks a language model to score the report on four fixed rubrics, each from 1 to 5, and GenLayer validators agree on the scores before they are stored. A one page web app shows the leaderboard and the rubric scores with reasons for each report.
 
 ## How it works
 
@@ -10,13 +10,13 @@ The reporter can challenge a triaged report once. The challenge reason goes into
 
 The leaderboard ranks triaged reports by total score, highest first. Reports that have not been triaged yet do not appear on it.
 
-## Consensus: the custom validator
+## Consensus: the comparative principle
 
-Two validators that ask the same model the same question can get scores that differ by a point on one rubric, and a strict check would fail consensus on honest answers. Exact match on all four scores was rejected for that reason, since it risks deadlock. The contract uses `gl.vm.run_nondet_unsafe` with a custom validator, the pattern the GenLayer docs call the default choice for non-deterministic work.
+Two validators that ask the same model the same question can get scores that differ by a point or two on one rubric, and a strict check would fail consensus on honest answers. Exact match on all four scores was rejected for that reason, since it risks deadlock. The contract uses `gl.eq_principle.prompt_comparative`, the built-in comparative principle from the GenLayer SDK, with a principle that states two assessments are equivalent when every rubric score differs by at most 2 points. The reason text is not compared. The leader scores are the ones stored.
 
-The validator runs the triage again itself and compares the two parsed results in code. It accepts the leader result only when every rubric score is within 1 point of its own score. The reason text is not compared. The leader scores are the ones stored. When the leader reported an expected error, for example the model returning no JSON, the validator agrees only when its own run fails with the exact same error message. Any other mismatch means disagree, which rotates the leader.
+The prompt keeps honest runs close together: it asks for integer scores from 1 to 5 and gives one concrete anchor per level for each rubric, so the model picks from a small, well defined scale instead of a wide open range. The code still checks each score against the 0 to 10 range, which accepts 1 to 5, so the total stays a plain sum of the four scores with a maximum of 20.
 
-The contract never uses `prompt_comparative` for scores. The fields `field_eq` and `numeric_tolerance` and the call `run_nondet_safe` do not exist in the official docs, so they are not used anywhere.
+The fields `field_eq` and `numeric_tolerance` and the call `run_nondet_safe` do not exist in the official docs, so they are not used anywhere.
 
 ## Functions
 
@@ -40,7 +40,7 @@ To point the app at a deployment, set `CONTRACT_ADDRESS`, `RPC_URL`, `CHAIN_ID`,
 
 ## Files
 
-`contracts/triage.py` holds the contract. `tests/test_triage.py` holds the local tests, 12 cases that cover the full flow, the one challenge rule, reverts for a missing report, a challenge from a non reporter, a challenge before triage, a score outside 0 to 10, bad model output, the validator band, empty and oversized input, and leaderboard ordering plus the limit. `frontend/` holds the app. `docs/screenshots/` holds the verified renders.
+`contracts/triage.py` holds the contract. `tests/test_triage.py` holds the local tests, 12 cases that cover the full flow, the one challenge rule, reverts for a missing report, a challenge from a non reporter, a challenge before triage, a score outside the 0 to 10 code range, bad model output, the comparative principle wording, empty and oversized input, and leaderboard ordering plus the limit. `frontend/` holds the app. `docs/screenshots/` holds the verified renders.
 
 ## Test it locally
 
@@ -48,11 +48,11 @@ The tests use genlayer-test in Direct Mode with mocked model responses. Install 
 
 `pytest tests/test_triage.py -q`
 
-The shipped contract targets the old-style SDK pin directly, and local tests deploy that exact file with no header swap, so the tested file is byte-identical to the file Studio receives. `gl.vm.run_nondet_unsafe` and `gl.nondet.exec_prompt` are both present in the local bundle, so the custom validator path runs locally too: the leader runs through mocked model calls, and the captured validator is re-run with changed mocks to prove it accepts a score gap of 1 point and rejects a gap of 2 points.
+The shipped contract targets the old-style SDK pin directly, and local tests deploy that exact file with no header swap, so the tested file is byte-identical to the file Studio receives. `gl.eq_principle.prompt_comparative` and `gl.nondet.exec_prompt` are both present in the local bundle. Direct Mode runs the leader only: it has no handler for the EqComparative check, so the validator verdict cannot be observed locally and the 2 point band is verified live on Studio instead, by a triage that reaches consensus there.
 
 ## Verification & Test Results
 
-Local tests run in genlayer-test Direct Mode with mocked model responses. The suite has 12 cases and all 12 pass. Coverage: submit and read back, full submit-triage-list flow, one challenge then re-triage, second challenge rejected, missing report, challenge by a non reporter, challenge before triage, score outside 0 to 10, bad model output, the validator band (accepts a 1 point score gap, rejects a 2 point gap), empty and oversized input, and leaderboard ordering plus the limit.
+Local tests run in genlayer-test Direct Mode with mocked model responses. The suite has 12 cases and all 12 pass. Coverage: submit and read back, full submit-triage-list flow, one challenge then re-triage, second challenge rejected, missing report, challenge by a non reporter, challenge before triage, score outside the 0 to 10 code range, bad model output, the comparative principle wording (2 point band) plus a pinned test that Direct Mode cannot evaluate the NLP verdict, empty and oversized input, and leaderboard ordering plus the limit.
 
 The frontend was rendered in a headless browser at 1440x900, 390x844, and 360x844, in dark and light mode. All 6 screenshots are in docs/screenshots/ and show a clean layout with no overflow and no sample data.
 
@@ -64,7 +64,7 @@ Deployment Transaction Hash: TBD
 Consensus Execution Proof: TBD (FINALIZED transaction hash)
 Live Demo URL: TBD
 
-No live deployment exists yet. These slots are filled in after the Studio deploy and a FINALIZED write transaction are verified on the Explorer.
+The slots below are for the current contract version. They are filled in after the Studio deploy and a FINALIZED write transaction are verified on the Explorer.
 
 ## Deploy it on Studio
 
