@@ -32,7 +32,7 @@ The fields `field_eq` and `numeric_tolerance` and the call `run_nondet_safe` do 
 
 ## The frontend
 
-`frontend/` holds a single page app: a submit form, the leaderboard, and a detail view with rubric bars and reasons. It connects a wallet through the injected provider, with no social login. All data comes from the deployed contract through the address in `frontend/config.js`. When that address is empty, the page shows a clear empty state that says the contract is not deployed yet, and it shows no report list. There is no sample data anywhere in the app.
+`frontend/` holds a single page app: a submit form, the leaderboard, and a detail view with rubric bars and reasons. It connects a wallet through the injected provider, with no social login. All data comes from the deployed contract through the address in `frontend/config.js`, which points at the live Studio deployment. The page reads through the official genlayer-js SDK over the Studio RPC, and writes go through the injected wallet provider. When that address is empty, the page shows a clear empty state that says the contract is not deployed yet, and it shows no report list. There is no sample data anywhere in the app.
 
 To point the app at a deployment, set `CONTRACT_ADDRESS`, `RPC_URL`, `CHAIN_ID`, and `EXPLORER_URL` in `frontend/config.js`, then serve the folder with any static file server. Example, from the repo root:
 
@@ -54,25 +54,29 @@ The shipped contract targets the old-style SDK pin directly, and local tests dep
 
 Local tests run in genlayer-test Direct Mode with mocked model responses. The suite has 12 cases and all 12 pass. Coverage: submit and read back, full submit-triage-list flow, one challenge then re-triage, second challenge rejected, missing report, challenge by a non reporter, challenge before triage, score outside the 0 to 10 code range, bad model output, the comparative principle wording (2 point band) plus a pinned test that Direct Mode cannot evaluate the NLP verdict, empty and oversized input, and leaderboard ordering plus the limit.
 
-The frontend was rendered in a headless browser at 1440x900, 390x844, and 360x844, in dark and light mode. All 6 screenshots are in docs/screenshots/ and show a clean layout with no overflow and no sample data.
+The frontend was rendered in a headless browser at 1440x900, 390x844, and 360x844, in dark and light mode. All 6 screenshots in docs/screenshots/ show the live leaderboard from the deployed contract: 1 report, triaged, total score 10 out of 20, with no overflow. Two more screenshots in docs/screenshots/live/ show the open detail view with the four rubric scores and reasons.
 
 ## Live Deployment Proof (GenLayer Studio)
 
-Network: TBD (GenLayer Studio)
-Contract Address: TBD
-Deployment Transaction Hash: TBD
-Consensus Execution Proof: TBD (FINALIZED transaction hash)
-Live Demo URL: TBD
+Network: GenLayer StudioNet (chain id 61999)
+Contract Address: 0xd714326110f8e2a3a71e50a7225494776AB79955
+Deployment Transaction Hash: 0xa9ab03999d8e6a100e584a5a7132929d490b473401568f6d7314014f51ed4ab9
+Consensus Execution Proof: triage(0), transaction 0xd1fbf37a5df2bf12f1f8816dad55becfe977b8f37c159f1dbc8d67fbd024592b, FINALIZED, reached consensus
+Live Demo URL: https://yogii123-qw.github.io/genlayer-triagedesk/
 
-The slots below are for the current contract version. They are filled in after the Studio deploy and a FINALIZED write transaction are verified on the Explorer.
+Verified live read, 22 November 2026: get_report(0) returns status 1 (triaged) and total score 10 out of 20, with rubric scores Impact 4, Exploitability 3, Evidence 1, Reproducibility 2. list_top(20) returns 1 report. The report was stored by submit_report, transaction 0xfc1fe95f6a33fe884a5f35580a337858531e8324ab13301bf018d40195d3c764.
+
+Contract on the Explorer: https://explorer-studio.genlayer.com/address/0xd714326110f8e2a3a71e50a7225494776AB79955
+Deploy transaction on the Explorer: https://explorer-studio.genlayer.com/tx/0xa9ab03999d8e6a100e584a5a7132929d490b473401568f6d7314014f51ed4ab9
+Triage transaction on the Explorer: https://explorer-studio.genlayer.com/tx/0xd1fbf37a5df2bf12f1f8816dad55becfe977b8f37c159f1dbc8d67fbd024592b
 
 ## Deploy it on Studio
 
-Open Studio, create a new Intelligent Contract, paste `contracts/triage.py`, and deploy. The constructor takes no arguments. Then submit a test report, call `triage`, and read the scores back with `get_report` and `list_top`. Deploy is not done yet; it needs a browser session, and this repo does not submit anything on its own. End to end testing from the form to the leaderboard waits for that deploy.
+The contract is deployed. To repeat the deploy, open Studio, create a new Intelligent Contract, paste `contracts/triage.py`, and deploy. The constructor takes no arguments. Then submit a test report, call `triage`, and read the scores back with `get_report` and `list_top`. The live deployment proof above records the deployed address and the FINALIZED triage transaction.
 
 ## Limits, stated plainly
 
-The Studio deploy has not been run yet, so the validator path on live Studio still needs that check. The local tests prove the logic with mocked model responses, not with a live model. Score quality depends on the model: a thin report can still score high if the model is generous, and a strong report can score low if the model misreads it. The challenge exists for exactly that case, but it is limited to one re-assessment per report. A reverted triage records nothing, so a report that fails triage stays untriaged and unlisted. The frontend reads and writes through a standard EVM ABI client; after the Studio deploy, the call path must be checked live before the demo video is recorded.
+The Studio deploy is live and one triage reached consensus there, so the validator path is proven on live Studio for that run. The local tests still prove the logic with mocked model responses, not with a live model. Score quality depends on the model: a thin report can still score high if the model is generous, and a strong report can score low if the model misreads it. The challenge exists for exactly that case, but it is limited to one re-assessment per report. A reverted triage records nothing, so a report that fails triage stays untriaged and unlisted. The frontend reads through the official genlayer-js SDK, and the read path is verified live against the deployed contract. The write path follows the SDK pattern with the injected wallet provider and still needs a live wallet check before the demo video is recorded.
 
 ## License
 
