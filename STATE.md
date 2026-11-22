@@ -51,7 +51,7 @@
 ## Alamat / hash
 - Studio deploy: belum ada (menunggu browser task)
 - Repo GitHub: https://github.com/Yogii123-qw/genlayer-triagedesk
-- Commit: 8069609 (master, terverifikasi di remote; STATE.md ini diperbarui pada commit berikutnya)
+- Commit: 6a23e13 (master, terverifikasi di remote)
 
 ## Perapian 22 Nov 2026
 - .gitignore baru dibuat: __pycache__/, .pytest_cache/, artifacts/, *.pyc, *.log, logs/, .genlayer/, .env*.
