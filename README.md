@@ -50,6 +50,22 @@ The tests use genlayer-test in Direct Mode with mocked model responses. Install 
 
 The test file swaps only the contract header to a locally available SDK pin. The shipped contract itself targets Studio-next, and that header stays untouched. `gl.vm.run_nondet_unsafe` and `gl.nondet.exec_prompt` are both present in the local bundle, so the custom validator path runs locally too: the leader runs through mocked model calls, and the captured validator is re-run with changed mocks to prove it accepts a score gap of 1 point and rejects a gap of 2 points.
 
+## Verification & Test Results
+
+Local tests run in genlayer-test Direct Mode with mocked model responses. The suite has 12 cases and all 12 pass. Coverage: submit and read back, full submit-triage-list flow, one challenge then re-triage, second challenge rejected, missing report, challenge by a non reporter, challenge before triage, score outside 0 to 10, bad model output, the validator band (accepts a 1 point score gap, rejects a 2 point gap), empty and oversized input, and leaderboard ordering plus the limit.
+
+The frontend was rendered in a headless browser at 1440x900, 390x844, and 360x844, in dark and light mode. All 6 screenshots are in docs/screenshots/ and show a clean layout with no overflow and no sample data.
+
+## Live Deployment Proof (GenLayer Studio)
+
+Network: TBD (GenLayer Studio)
+Contract Address: TBD
+Deployment Transaction Hash: TBD
+Consensus Execution Proof: TBD (FINALIZED transaction hash)
+Live Demo URL: TBD
+
+No live deployment exists yet. These slots are filled in after the Studio deploy and a FINALIZED write transaction are verified on the Explorer.
+
 ## Deploy it on Studio
 
 Open Studio, create a new Intelligent Contract, paste `contracts/triage.py`, and deploy. The constructor takes no arguments. Then submit a test report, call `triage`, and read the scores back with `get_report` and `list_top`. Deploy is not done yet; it needs a browser session, and this repo does not submit anything on its own. End to end testing from the form to the leaderboard waits for that deploy.

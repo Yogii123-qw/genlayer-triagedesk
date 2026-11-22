@@ -53,6 +53,11 @@
 - Repo GitHub: https://github.com/Yogii123-qw/genlayer-triagedesk
 - Commit: 8069609 (master, terverifikasi di remote; STATE.md ini diperbarui pada commit berikutnya)
 
+## Perapian 22 Nov 2026
+- .gitignore baru dibuat: __pycache__/, .pytest_cache/, artifacts/, *.pyc, *.log, logs/, .genlayer/, .env*.
+- README ditambah bagian Verification & Test Results (12/12 tes + 6 screenshot) dan Live Deployment Proof (GenLayer Studio) dengan slot TBD termasuk Live Demo URL.
+- Kontrak dan frontend tidak diubah; tes lokal diulang: 12/12 lolos.
+
 ## Langkah berikutnya
 1. Serahkan ke induk untuk uji deploy Studio lewat cloud browser (akun dev Studio, bukan wallet Monch). Tempel kontrak, deploy tanpa argumen konstruktor, submit satu laporan, panggil triage sampai ada transaksi ACCEPTED dan consensus tercapai, baca get_report dan list_top. Catat alamat kontrak dan tx hash.
 2. Isi CONTRACT_ADDRESS, RPC_URL, CHAIN_ID, dan EXPLORER_URL di frontend/config.js dengan alamat deploy, lalu uji alur penuh dari form sampai leaderboard di browser dan rekam video demo di bawah 45 detik mengikuti DEMO-SCRIPT.md.
