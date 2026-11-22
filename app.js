@@ -1,19 +1,14 @@
 /* TriageDesk frontend.
  *
  * Every report shown here comes from the deployed TriageDesk contract
- * through the address in config.js. When no address is configured the
- * app shows an empty state and loads nothing. There is no sample data.
+ * on GenLayer Studio, read through the official genlayer-js client
+ * (vendored in vendor/genlayer-client.js). Reads need no wallet.
+ * Writes are signed by the connected wallet through the same client.
+ * When no address is configured the app shows an empty state and loads
+ * nothing. There is no sample data.
  */
 (function () {
   "use strict";
-
-  var ABI = [
-    "function submit_report(string title, string description, string steps, string impact_claim) returns (uint256)",
-    "function triage(uint256 report_id) returns (tuple(uint256 id, string title, string description, string steps, string impact_claim, string reporter, uint256 status, bool challenged, string challenge_reason, uint256 impact, uint256 exploitability, uint256 evidence, uint256 reproducibility, string impact_reason, string exploitability_reason, string evidence_reason, string reproducibility_reason, uint256 total_score))",
-    "function challenge(uint256 report_id, string reason) returns (tuple(uint256 id, string title, string description, string steps, string impact_claim, string reporter, uint256 status, bool challenged, string challenge_reason, uint256 impact, uint256 exploitability, uint256 evidence, uint256 reproducibility, string impact_reason, string exploitability_reason, string evidence_reason, string reproducibility_reason, uint256 total_score))",
-    "function get_report(uint256 report_id) view returns (tuple(uint256 id, string title, string description, string steps, string impact_claim, string reporter, uint256 status, bool challenged, string challenge_reason, uint256 impact, uint256 exploitability, uint256 evidence, uint256 reproducibility, string impact_reason, string exploitability_reason, string evidence_reason, string reproducibility_reason, uint256 total_score))",
-    "function list_top(uint256 limit) view returns (tuple(tuple(uint256 id, string title, string description, string steps, string impact_claim, string reporter, uint256 status, bool challenged, string challenge_reason, uint256 impact, uint256 exploitability, uint256 evidence, uint256 reproducibility, string impact_reason, string exploitability_reason, string evidence_reason, string reproducibility_reason, uint256 total_score)[] reports, uint256 total_reports))"
-  ];
 
   var RUBRICS = [
     ["impact", "Impact"],
@@ -21,12 +16,16 @@
     ["evidence", "Evidence"],
     ["reproducibility", "Reproducibility"]
   ];
+  var MAX_RUBRIC = 5;
+  var MAX_TOTAL = 20;
+  var STUDIO_CHAIN_ID_HEX = "0xf22f";
 
   var cfg = window.TRIAGEDESK_CONFIG || {};
   var contractAddress = (cfg.CONTRACT_ADDRESS || "").trim();
   var hasContract = contractAddress.length > 0;
   var account = null;
-  var readContract = null;
+  var readClient = null;
+  var writeClient = null;
   var currentReport = null;
   var toastTimer = null;
 
@@ -46,6 +45,14 @@
     el.classList.remove("hidden");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.add("hidden"); }, 5000);
+  }
+  function txHashOf(v) {
+    if (typeof v === "string") return v;
+    if (v && typeof v.hash === "string") return v.hash;
+    return String(v);
+  }
+  function txLink(hash) {
+    return cfg.EXPLORER_URL ? cfg.EXPLORER_URL + "/tx/" + hash : hash;
   }
 
   /* Theme: stored locally, page data never is. */
@@ -91,7 +98,7 @@
       btn.innerHTML =
         '<span class="rank">#' + (i + 1) + '</span>' +
         '<span class="report-score"><span class="num">' + esc(r.total_score) + '</span>' +
-        '<span class="of">/ 40</span></span>' +
+        '<span class="of">/ ' + MAX_TOTAL + '</span></span>' +
         '<span class="r-title">' + esc(r.title) + '</span>' +
         '<span class="r-meta">by ' + esc(shortAddr(r.reporter)) + '</span>' +
         '<span class="report-status">' + badge + '</span>';
@@ -105,16 +112,18 @@
     $("listEmpty").classList.toggle("hidden", reports.length !== 0);
     $("statTotal").textContent = String(totalReports);
     $("statTriaged").textContent = String(triaged);
-    $("statTop").textContent = top > 0 ? String(top) + " / 40" : "--";
+    $("statTop").textContent = top > 0 ? String(top) + "/" + MAX_TOTAL : "--";
   }
 
   function loadReports() {
-    if (!hasContract || !readContract) return;
+    if (!hasContract || !readClient) return;
     setLoading(true);
     $("loadError").classList.add("hidden");
-    readContract.list_top(20).then(function (res) {
+    readClient.readContract({ address: contractAddress, functionName: "list_top", args: [20] }).then(function (res) {
       setLoading(false);
-      renderList(res.reports || res[0] || [], Number(res.total_reports || res[1] || 0));
+      var reports = (res && res.reports) || (res && res[0]) || [];
+      var total = Number((res && res.total_reports) || (res && res[1]) || 0);
+      renderList(reports, total);
     }).catch(function (err) {
       setLoading(false);
       $("loadErrorText").textContent = "The read call failed: " + (err && err.message ? err.message : err);
@@ -123,13 +132,14 @@
   }
 
   function showDetail(id) {
-    if (!readContract) return;
-    readContract.get_report(id).then(function (r) {
+    if (!readClient) return;
+    readClient.readContract({ address: contractAddress, functionName: "get_report", args: [id] }).then(function (r) {
       currentReport = r;
       $("detailTitle").textContent = r.title;
-      $("detailReporter").textContent = shortAddr(r.reporter) + "  (" + r.reporter + ")";
+      $("detailReporter").textContent = shortAddr(r.reporter);
+      $("detailReporterFull").textContent = r.reporter;
       $("detailStatus").textContent = Number(r.status) === 1 ? "Triaged" : "Awaiting triage";
-      $("detailTotal").textContent = Number(r.status) === 1 ? String(r.total_score) + " / 40" : "Not scored yet";
+      $("detailTotal").textContent = Number(r.status) === 1 ? String(r.total_score) + " / " + MAX_TOTAL : "Not scored yet";
       $("detailDesc").textContent = r.description;
       $("detailSteps").textContent = r.steps;
       $("detailImpact").textContent = r.impact_claim;
@@ -142,8 +152,8 @@
         div.className = "rubric";
         div.innerHTML =
           '<div class="rubric-head"><span>' + esc(label) + '</span>' +
-          '<span class="mono">' + score + ' / 10</span></div>' +
-          '<div class="rubric-bar"><div class="rubric-fill" style="width:' + (score * 10) + '%"></div></div>' +
+          '<span class="mono">' + score + ' / ' + MAX_RUBRIC + '</span></div>' +
+          '<div class="rubric-bar"><div class="rubric-fill" style="width:' + (score * 100 / MAX_RUBRIC) + '%"></div></div>' +
           '<p>' + esc(r[key + "_reason"] || (Number(r.status) === 1 ? "No reason recorded." : "Not scored yet.")) + '</p>';
         box.appendChild(div);
       });
@@ -167,7 +177,12 @@
   });
   $("retryBtn").addEventListener("click", loadReports);
 
-  /* Wallet connection. */
+  /* Wallet connection. Writes are signed by MetaMask through genlayer-js,
+   * which needs the wallet on the GenLayer Studio chain. */
+  function getWriteClient() {
+    if (!writeClient) writeClient = window.GenLayer.makeClient(account);
+    return writeClient;
+  }
   function syncConnectBtn() {
     var btn = $("connectBtn");
     if (account) {
@@ -182,6 +197,27 @@
       $("submitNote").textContent = "Connect a wallet to send a report to the contract.";
     }
   }
+  function switchToStudio() {
+    if (!window.ethereum) return Promise.resolve();
+    return window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: STUDIO_CHAIN_ID_HEX }]
+    }).catch(function (err) {
+      if (err && err.code === 4902) {
+        return window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: STUDIO_CHAIN_ID_HEX,
+            chainName: "GenLayer Studio",
+            rpcUrls: [cfg.RPC_URL],
+            nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+            blockExplorerUrls: cfg.EXPLORER_URL ? [cfg.EXPLORER_URL] : []
+          }]
+        });
+      }
+      throw err;
+    });
+  }
   $("connectBtn").addEventListener("click", function () {
     if (!window.ethereum) {
       toast("No wallet found. Install MetaMask or another injected wallet first.");
@@ -189,27 +225,36 @@
     }
     window.ethereum.request({ method: "eth_requestAccounts" }).then(function (accounts) {
       account = accounts && accounts[0] ? accounts[0] : null;
+      writeClient = null;
+      return switchToStudio().then(function () { return account; });
+    }).then(function () {
       syncConnectBtn();
-      if (account) toast("Connected as " + shortAddr(account) + ".");
+      if (account) toast("Connected as " + shortAddr(account) + " on GenLayer Studio.");
       if (currentReport) showDetail(Number(currentReport.id));
     }).catch(function (err) {
       toast("Wallet connection failed: " + (err && err.message ? err.message : err));
     });
   });
 
-  function writeContract() {
-    if (!window.ethers || !window.ethereum) return null;
-    var provider = new window.ethers.BrowserProvider(window.ethereum);
-    return provider.getSigner().then(function (signer) {
-      return new window.ethers.Contract(contractAddress, ABI, signer);
-    });
-  }
-
   function setFieldError(inputId, errorId, msg) {
     var input = $(inputId), err = $(errorId);
     err.textContent = msg || "";
     input.classList.toggle("invalid", !!msg);
     return !msg;
+  }
+
+  function sendWrite(functionName, args, onConfirmed) {
+    var client = getWriteClient();
+    return client.writeContract({ address: contractAddress, functionName: functionName, args: args })
+      .then(function (hash) {
+        var h = txHashOf(hash);
+        toast("Transaction " + h + ". Waiting for finalization.");
+        return client.waitForTransactionReceipt({ hash: h, status: "FINALIZED" }).then(function () { return h; });
+      })
+      .then(function (h) {
+        toast("Confirmed on chain: " + txLink(h));
+        onConfirmed();
+      });
   }
 
   $("submitForm").addEventListener("submit", function (ev) {
@@ -228,14 +273,7 @@
     var btn = $("submitBtn");
     btn.disabled = true;
     btn.textContent = "Sending...";
-    writeContract().then(function (c) {
-      return c.submit_report(title, desc, steps, impact);
-    }).then(function (tx) {
-      toast("Report sent. Transaction " + tx.hash + ". Waiting for confirmation.");
-      return tx.wait();
-    }).then(function (receipt) {
-      var link = cfg.EXPLORER_URL ? cfg.EXPLORER_URL + "/tx/" + receipt.hash : receipt.hash;
-      toast("Report confirmed on chain: " + link);
+    sendWrite("submit_report", [title, desc, steps, impact], function () {
       $("submitForm").reset();
       loadReports();
     }).catch(function (err) {
@@ -249,17 +287,13 @@
   $("triageBtn").addEventListener("click", function () {
     if (!currentReport || !account) return;
     var btn = $("triageBtn");
+    var id = Number(currentReport.id);
     btn.disabled = true;
     btn.textContent = "Running triage...";
-    writeContract().then(function (c) {
-      return c.triage(Number(currentReport.id));
-    }).then(function (tx) {
-      toast("Triage sent. Transaction " + tx.hash + ". Waiting for confirmation.");
-      return tx.wait();
-    }).then(function () {
+    sendWrite("triage", [id], function () {
       toast("Triage confirmed. Scores are stored on chain.");
       loadReports();
-      showDetail(Number(currentReport.id));
+      showDetail(id);
     }).catch(function (err) {
       toast("Triage failed: " + (err && err.message ? err.message : err));
     }).finally(function () {
@@ -273,18 +307,14 @@
     var reason = $("fChallenge").value.trim();
     if (!setFieldError("fChallenge", "eChallenge", reason.length < 1 || reason.length > 500 ? "Reason must be 1 to 500 characters." : "")) return;
     var btn = $("challengeBtn");
+    var id = Number(currentReport.id);
     btn.disabled = true;
     btn.textContent = "Sending...";
-    writeContract().then(function (c) {
-      return c.challenge(Number(currentReport.id), reason);
-    }).then(function (tx) {
-      toast("Challenge sent. Transaction " + tx.hash + ". Waiting for confirmation.");
-      return tx.wait();
-    }).then(function () {
+    sendWrite("challenge", [id, reason], function () {
       toast("Challenge confirmed. Run triage again for the re-assessment.");
       $("fChallenge").value = "";
       loadReports();
-      showDetail(Number(currentReport.id));
+      showDetail(id);
     }).catch(function (err) {
       toast("Challenge failed: " + (err && err.message ? err.message : err));
     }).finally(function () {
@@ -301,14 +331,13 @@
     $("listEmpty").classList.remove("hidden");
     return;
   }
-  if (typeof window.ethers === "undefined") {
-    $("loadErrorText").textContent = "The ethers library failed to load from the CDN. Check the network connection and reload.";
+  if (typeof window.GenLayer === "undefined" || !window.GenLayer.makeClient) {
+    $("loadErrorText").textContent = "The GenLayer client failed to load. Check the network connection and reload.";
     $("loadError").classList.remove("hidden");
     return;
   }
   try {
-    var provider = new window.ethers.JsonRpcProvider(cfg.RPC_URL || undefined);
-    readContract = new window.ethers.Contract(contractAddress, ABI, provider);
+    readClient = window.GenLayer.makeClient();
   } catch (err) {
     $("loadErrorText").textContent = "Could not build the contract client: " + err.message;
     $("loadError").classList.remove("hidden");

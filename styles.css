@@ -219,6 +219,8 @@ textarea { resize: vertical; }
 .detail-meta div { display: grid; gap: 2px; }
 .detail-meta dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
 .detail-meta dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.detail-addr { grid-column: 1 / -1; }
+.detail-addr dd { font-size: 13px; font-weight: 500; }
 .detail-text { color: var(--muted); margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
 .rubric-list { display: grid; gap: 12px; margin-top: 12px; }
 .rubric { background: var(--bg-elevated); border: 1px solid var(--hairline); border-radius: var(--radius-inner); padding: 12px 14px; }

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js" defer></script>
+<script src="vendor/genlayer-client.js" defer></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -38,10 +38,10 @@
       <h1>Bug triage, scored in the open.</h1>
       <p class="lede">Submit a vulnerability report. A language model scores it on four fixed rubrics, and GenLayer validators agree on the scores before they are stored. The leaderboard ranks every triaged report by total score.</p>
       <div class="hero-meta">
-        <span class="pill">Impact 0-10</span>
-        <span class="pill">Exploitability 0-10</span>
-        <span class="pill">Evidence 0-10</span>
-        <span class="pill">Reproducibility 0-10</span>
+        <span class="pill">Impact 1-5</span>
+        <span class="pill">Exploitability 1-5</span>
+        <span class="pill">Evidence 1-5</span>
+        <span class="pill">Reproducibility 1-5</span>
       </div>
     </div>
     <div class="hero-stats" id="heroStats">
@@ -122,6 +122,7 @@
       <div><dt>Reporter</dt><dd class="mono" id="detailReporter">--</dd></div>
       <div><dt>Status</dt><dd id="detailStatus">--</dd></div>
       <div><dt>Total score</dt><dd class="mono" id="detailTotal">--</dd></div>
+      <div class="detail-addr"><dt>Reporter address</dt><dd class="mono" id="detailReporterFull">--</dd></div>
     </dl>
     <p class="detail-text" id="detailDesc"></p>
     <h3>Reproduction steps</h3>
