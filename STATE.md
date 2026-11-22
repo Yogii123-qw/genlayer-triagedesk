@@ -51,7 +51,7 @@
 ## Alamat / hash
 - Studio deploy: belum ada (menunggu browser task)
 - Repo GitHub: https://github.com/Yogii123-qw/genlayer-triagedesk
-- Commit: (diisi sesudah push)
+- Commit: 8069609 (master, terverifikasi di remote; STATE.md ini diperbarui pada commit berikutnya)
 
 ## Langkah berikutnya
 1. Serahkan ke induk untuk uji deploy Studio lewat cloud browser (akun dev Studio, bukan wallet Monch). Tempel kontrak, deploy tanpa argumen konstruktor, submit satu laporan, panggil triage sampai ada transaksi ACCEPTED dan consensus tercapai, baca get_report dan list_top. Catat alamat kontrak dan tx hash.
