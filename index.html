@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriageDesk - Bug Report Triage on GenLayer</title>
+<meta name="description" content="TriageDesk scores security bug reports on four fixed rubrics with a language model and validator consensus on GenLayer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<div class="glow" aria-hidden="true"></div>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+    </span>
+    <span class="brand-name">TriageDesk</span>
+    <span class="brand-tag">GenLayer</span>
+  </div>
+  <div class="top-actions">
+    <button id="themeToggle" class="btn btn-ghost" type="button" aria-label="Switch theme">
+      <svg class="theme-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" fill="currentColor" stroke="none"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>
+      <span id="themeIcon" class="theme-label">Light</span>
+    </button>
+    <button id="connectBtn" class="btn btn-primary" type="button">Connect wallet</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero card">
+    <div>
+      <h1>Bug triage, scored in the open.</h1>
+      <p class="lede">Submit a vulnerability report. A language model scores it on four fixed rubrics, and GenLayer validators agree on the scores before they are stored. The leaderboard ranks every triaged report by total score.</p>
+      <div class="hero-meta">
+        <span class="pill">Impact 0-10</span>
+        <span class="pill">Exploitability 0-10</span>
+        <span class="pill">Evidence 0-10</span>
+        <span class="pill">Reproducibility 0-10</span>
+      </div>
+    </div>
+    <div class="hero-stats" id="heroStats">
+      <div class="stat"><span class="stat-num" id="statTotal">--</span><span class="stat-label">Reports</span></div>
+      <div class="stat"><span class="stat-num" id="statTriaged">--</span><span class="stat-label">Triaged</span></div>
+      <div class="stat"><span class="stat-num" id="statTop">--</span><span class="stat-label">Top score</span></div>
+    </div>
+  </section>
+
+  <div id="deployNotice" class="notice card hidden" role="status">
+    <strong>Contract not deployed yet.</strong>
+    <p>The TriageDesk contract has no deployed address in <code>config.js</code>, so there is no report list to show. Set <code>CONTRACT_ADDRESS</code> in <code>frontend/config.js</code> after deploying in GenLayer Studio, then reload this page. No report shown here is real until the contract is live.</p>
+  </div>
+
+  <div id="loadError" class="notice card notice-error hidden" role="alert">
+    <strong>Could not reach the contract.</strong>
+    <p id="loadErrorText">The read call failed. Check the RPC endpoint in config.js and try again.</p>
+    <button id="retryBtn" class="btn btn-secondary" type="button">Try again</button>
+  </div>
+
+  <section class="bento">
+    <div class="card form-card">
+      <div class="card-head">
+        <h2>Submit a report</h2>
+        <span class="card-sub">Wallet required. No social login.</span>
+      </div>
+      <form id="submitForm" novalidate>
+        <label class="field">
+          <span class="field-label">Title <span class="field-hint">1 to 100 characters</span></span>
+          <input id="fTitle" type="text" maxlength="100" placeholder="Reentrancy in vault withdraw" autocomplete="off">
+          <span class="field-error" id="eTitle"></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Description <span class="field-hint">1 to 2000 characters</span></span>
+          <textarea id="fDesc" rows="4" maxlength="2000" placeholder="What is wrong, where it lives, and what an attacker gains."></textarea>
+          <span class="field-error" id="eDesc"></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Reproduction steps <span class="field-hint">1 to 2000 characters</span></span>
+          <textarea id="fSteps" rows="4" maxlength="2000" placeholder="1. Deposit 1 token. 2. Call withdraw with a reentrant receiver. 3. Observe the payout."></textarea>
+          <span class="field-error" id="eSteps"></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Impact claimed <span class="field-hint">1 to 500 characters</span></span>
+          <textarea id="fImpact" rows="2" maxlength="500" placeholder="An attacker can drain the vault balance."></textarea>
+          <span class="field-error" id="eImpact"></span>
+        </label>
+        <button id="submitBtn" class="btn btn-primary btn-block" type="submit" disabled>Connect wallet to submit</button>
+        <p class="form-note" id="submitNote">Connect a wallet to send a report to the contract.</p>
+      </form>
+    </div>
+
+    <div class="card list-card">
+      <div class="card-head">
+        <h2>Leaderboard</h2>
+        <span class="card-sub" id="listCount">No contract connected</span>
+      </div>
+      <div id="listSkeleton" class="hidden" aria-hidden="true">
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+      </div>
+      <div id="listEmpty" class="empty hidden">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+        <p><strong>No triaged reports yet.</strong></p>
+        <p>Submit the first report and run triage to see it ranked here.</p>
+      </div>
+      <ol id="reportList" class="report-list"></ol>
+    </div>
+  </section>
+
+  <section id="detailCard" class="card detail-card hidden">
+    <div class="card-head">
+      <h2 id="detailTitle">Report</h2>
+      <button id="detailClose" class="btn btn-ghost" type="button" aria-label="Close detail">Close</button>
+    </div>
+    <dl class="detail-meta">
+      <div><dt>Reporter</dt><dd class="mono" id="detailReporter">--</dd></div>
+      <div><dt>Status</dt><dd id="detailStatus">--</dd></div>
+      <div><dt>Total score</dt><dd class="mono" id="detailTotal">--</dd></div>
+    </dl>
+    <p class="detail-text" id="detailDesc"></p>
+    <h3>Reproduction steps</h3>
+    <p class="detail-text" id="detailSteps"></p>
+    <h3>Impact claimed</h3>
+    <p class="detail-text" id="detailImpact"></p>
+    <h3>Rubric scores</h3>
+    <div id="rubricList" class="rubric-list"></div>
+    <div id="challengeBox" class="challenge hidden">
+      <h3>Challenge this assessment</h3>
+      <p>As the reporter you can ask for one re-assessment. Your reason goes into the second prompt.</p>
+      <label class="field">
+        <span class="field-label">Reason <span class="field-hint">1 to 500 characters</span></span>
+        <textarea id="fChallenge" rows="3" maxlength="500" placeholder="The evidence rubric missed the attached log."></textarea>
+        <span class="field-error" id="eChallenge"></span>
+      </label>
+      <button id="challengeBtn" class="btn btn-secondary" type="button">Send challenge</button>
+    </div>
+    <div class="detail-actions">
+      <button id="triageBtn" class="btn btn-primary" type="button">Run triage</button>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <p>TriageDesk runs on GenLayer. Scores come from the deployed contract, never from this page.</p>
+  <p><a href="https://github.com/Yogii123-qw/genlayer-triagedesk">Source on GitHub</a></p>
+</footer>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
+</body>
+</html>
